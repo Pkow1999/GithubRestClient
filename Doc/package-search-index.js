@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"com.example.GithubRestClient"},{"l":"com.example.GithubRestClient.repositories"}];updateSearchResults();
