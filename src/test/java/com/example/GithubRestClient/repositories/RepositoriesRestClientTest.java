@@ -51,12 +51,12 @@ class RepositoriesRestClientTest {
     @Test
     void userDoesNotExist(){
 
-        this.server.expect(requestTo("https://api.github.com/users/Pkow19/repos"))
+        this.server.expect(requestTo("https://api.github.com/users//repos"))
                 .andRespond(withResourceNotFound());
 
         RepositoriesUserNotFound notFoundException = assertThrows(
                 RepositoriesUserNotFound.class,
-                () -> restClient.findByUsername("Pkow19")
+                () -> restClient.findByUsername("")
         );
         assertEquals("{\n" +
                 "\t\"status\": 404\n" +
