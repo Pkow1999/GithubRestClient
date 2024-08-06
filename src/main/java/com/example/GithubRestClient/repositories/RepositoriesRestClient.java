@@ -2,19 +2,18 @@ package com.example.GithubRestClient.repositories;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Spring Boot Component Class in which we implement REST client to deal with our task.
@@ -48,37 +47,30 @@ public class RepositoriesRestClient {
      * Method that uses GitHub API to request repositories information given username.
      * @param username GitHub username.
      * @return An Optional with List of all given username repositories, or empty Optional when the user does not exist.
-     * @throws JsonProcessingException An Exception which is thrown when Jackson found a problem when processing Json file.
      */
-    public Optional<List<Repo>> findByUsername(String username) throws JsonProcessingException {
-        final ArrayNode finalRepo = objectMapper.createArrayNode();
+    public List<Repo> findByUsername(String username){
+        List<Repo> repos;
+
         try{
-            ArrayNode userRepos = client.get()
+            repos = client.get()
                     .uri("/users/{username}/repos",username)
                     .retrieve()
-                    .body(ArrayNode.class);
-
-            assert userRepos != null;
-
-            for(JsonNode userRepo : userRepos){
-                if(userRepo.get("fork").isBoolean() && userRepo.get("fork").booleanValue())
-                {
-                    continue;
-                }
-                String full_name = userRepo.get("full_name").asText();
-
-                JsonNode branchInfo = client.get()
-                        .uri("repos/" + full_name + "/branches")
+                    .body(new ParameterizedTypeReference<>() {});
+            assert repos != null;
+            for(final Repo repo : repos){
+                List<Branch> branches = client.get()
+                        .uri("repos/" + repo.owner().login() + "/" + repo.name() + "/branches")
                         .retrieve()
-                        .body(JsonNode.class);
-
-                ((ObjectNode) userRepo).putIfAbsent("branches",branchInfo);
-                finalRepo.add(userRepo);
+                        .body(new ParameterizedTypeReference<>() {});
+                assert branches != null;
+                branches.stream().collect(Collectors.toCollection(repo::branches));
             }
-        } catch (HttpClientErrorException exception){
-            throw new RepositoriesUserNotFound();
+        }catch (HttpClientErrorException ex){
+            if(ex.getStatusCode().equals(HttpStatus.NOT_FOUND))
+                throw new RepositoriesUserNotFoundException();
+            else throw ex;
         }
 
-        return Optional.ofNullable(objectMapper.readValue(finalRepo.toString(), new TypeReference<List<Repo>>() {}));
+        return repos.stream().filter(repo -> !repo.fork()).collect(Collectors.toList());
     }
 }

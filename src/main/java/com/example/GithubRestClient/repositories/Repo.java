@@ -2,6 +2,7 @@ package com.example.GithubRestClient.repositories;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -16,6 +17,11 @@ import java.util.List;
 public record Repo(
         String name,
         List<Branch> branches,
-        Owner owner
+        Owner owner,
+        Boolean fork
 ) {
+    public Repo{
+        if(branches == null)
+            branches = new ArrayList<>();
+    }
 }

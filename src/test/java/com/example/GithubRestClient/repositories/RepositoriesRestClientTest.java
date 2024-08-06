@@ -11,7 +11,6 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound;
@@ -35,7 +34,8 @@ class RepositoriesRestClientTest {
         Repo repo = new Repo(
                 "AOC2023",
                 new ArrayList<>(Collections.singleton(new Branch("main", new Commit("f2140ada0bdba6c4dbf95615e6a230b744ab229a")))),
-                new Owner("Pkow1999")
+                new Owner("Pkow1999"),
+                false
                 );
 
         this.server.expect(requestTo("https://api.github.com/users/Pkow1999/repos"))
@@ -44,23 +44,20 @@ class RepositoriesRestClientTest {
         this.server.expect(requestTo("https://api.github.com/repos/Pkow1999/AOC2023/branches"))
                 .andRespond(withSuccess(mapper.writeValueAsString(repo),MediaType.APPLICATION_JSON));
 
-       Optional<List<Repo>> trueRepos = restClient.findByUsername("Pkow1999");
-       assertTrue(trueRepos.isPresent());
-       assertEquals(repo, trueRepos.get().getFirst());
+       List<Repo> trueRepos = restClient.findByUsername("Pkow1999");
+       assertEquals(repo, trueRepos.getFirst());
     }
     @Test
     void userDoesNotExist(){
 
-        this.server.expect(requestTo("https://api.github.com/users//repos"))
+        this.server.expect(requestTo("https://api.github.com/users/repos"))
                 .andRespond(withResourceNotFound());
 
-        RepositoriesUserNotFound notFoundException = assertThrows(
-                RepositoriesUserNotFound.class,
+        RepositoriesUserNotFoundException notFoundException = assertThrows(
+                RepositoriesUserNotFoundException.class,
                 () -> restClient.findByUsername("")
         );
-        assertEquals("{\n" +
-                "\t\"status\": 404\n" +
-                "\t\"message\": User does not exist\n" +
-                "}",notFoundException.getResponseBodyAsString());
+        assertEquals(404,notFoundException.getStatusCode().value());
+        assertEquals("User does not exist",notFoundException.getMessage());
     }
 }
