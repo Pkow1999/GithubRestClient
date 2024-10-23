@@ -1,9 +1,11 @@
 package com.example.GithubRestClient.repositories;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -11,9 +13,6 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Spring Boot Component Class in which we implement REST client to deal with our task.
@@ -25,22 +24,17 @@ public class RepositoriesRestClient {
      * Spring Boot RestClient which handles our API Requests.
      */
     private final RestClient client;
-    /**
-     * Jackson ObjectMapper which handles JSON format.
-     */
-    private final ObjectMapper objectMapper;
 
     /**
      * Constructor which initialize RestClient using JDKClientHttpRequestFactory and ObjectMapper.
      * @param builder Builder of the RestClient.
      * @param objectMapper Jackson ObjectMapper.
      */
-    public RepositoriesRestClient(RestClient.Builder builder, ObjectMapper objectMapper){
+    public RepositoriesRestClient(RestClient.Builder builder){
         this.client = builder.baseUrl("https://api.github.com/")
                 .requestFactory(new JdkClientHttpRequestFactory())
                 .defaultHeader("Accept","application/json")
                 .build();
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -49,21 +43,19 @@ public class RepositoriesRestClient {
      * @return An Optional with List of all given username repositories, or empty Optional when the user does not exist.
      */
     public List<Repo> findByUsername(String username){
-        List<Repo> repos;
+        Optional<List<Repo>> repos;
 
         try{
-            repos = client.get()
+            repos = Optional.ofNullable(client.get()
                     .uri("/users/{username}/repos",username)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<>() {});
-            assert repos != null;
-            for(final Repo repo : repos){
-                List<Branch> branches = client.get()
+                    .body(new ParameterizedTypeReference<>() {}));
+            for(final Repo repo : repos.orElse(Collections.emptyList())){
+                Optional<List<Branch>> branches = Optional.ofNullable(client.get()
                         .uri("repos/" + repo.owner().login() + "/" + repo.name() + "/branches")
                         .retrieve()
-                        .body(new ParameterizedTypeReference<>() {});
-                assert branches != null;
-                branches.stream().collect(Collectors.toCollection(repo::branches));
+                        .body(new ParameterizedTypeReference<>() {}));
+                branches.orElse(Collections.emptyList()).stream().collect(Collectors.toCollection(repo::branches));
             }
         }catch (HttpClientErrorException ex){
             if(ex.getStatusCode().equals(HttpStatus.NOT_FOUND))
@@ -71,6 +63,6 @@ public class RepositoriesRestClient {
             else throw ex;
         }
 
-        return repos.stream().filter(repo -> !repo.fork()).collect(Collectors.toList());
+        return repos.orElse(Collections.emptyList()).stream().filter(repo -> !repo.fork()).collect(Collectors.toList());
     }
 }

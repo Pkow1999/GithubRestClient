@@ -8,8 +8,7 @@ import org.springframework.web.client.HttpClientErrorException;
  */
 
 public class RepositoriesUserNotFoundException extends HttpClientErrorException {
-    private Integer responseCode = HttpStatus.NOT_FOUND.value();
-    private String message = "User does not exist";
+    final private String message = "User does not exist";
     /**
      * Default constructor
      */

@@ -1,6 +1,6 @@
 package com.example.GithubRestClient.repositories;
 
-public record RepositoriesErrorRecord(
+public record RepositoriesUserNotFoundRecord(
         Integer status,
         String message
 ) {
